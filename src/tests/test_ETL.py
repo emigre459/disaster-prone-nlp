@@ -70,3 +70,17 @@ def test_no_duplicates():
     
     assert(df_temp.duplicated().sum() == 0)
     
+    
+def test_saving(tmp_path):
+    '''
+    Make sure no errors are thrown as a result of saving the cleaned DataFrame
+    to an sqlite3 database
+    '''
+    df_temp = clean_data(load_data('../../data/disaster_messages.csv',
+                              '../../data/disaster_categories.csv'))
+    #TODO: figure out why you're getting an OperationalError 435 from sqlalchemy
+        # then uncomment tests
+    #save_data(df_temp, str(tmp_path))
+    #assert(os.path.isfile(tmp_path))
+    
+    
