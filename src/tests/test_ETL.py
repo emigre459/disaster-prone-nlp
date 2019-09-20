@@ -8,7 +8,7 @@ import datatest as dt
 #import sys
 # insert at 1, 0 is the script path (or '' in REPL)
 #sys.path.insert(1, '../src/data')
-from src.data.process_data import load_data, clean_data, save_data
+from src.data_processing.process_data import load_data, clean_data, save_data
 
 # Feeds the DataFrame df in when pytest is run so it can be used in testing
 @pytest.fixture(scope='module')
@@ -43,7 +43,7 @@ def test_all_clean_columns():
     and that 
     '''
     # Have to explicitly load it here since I'm using regular asserts
-    # and not datatest
+    # and not datatest validation
     df_temp = clean_data(load_data('../../data/disaster_messages.csv',
                               '../../data/disaster_categories.csv'))
     
