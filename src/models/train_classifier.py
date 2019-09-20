@@ -14,6 +14,7 @@ def build_model():
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
+    #TODO: make sure you include adapted model_weighted_f1_score(reports) code
     pass
 
 
