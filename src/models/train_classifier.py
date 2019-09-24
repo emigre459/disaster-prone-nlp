@@ -53,7 +53,7 @@ def parse_args(args):
 
     parser.add_argument('model_filepath', type=str, help='Relative filepath for saving the pickled model \
     after it is trained and ready to be used for predictions. This should be of the format \
-    "../../date-trained_model-name.pkl"')
+    "../../models/date-trained_model-name.pkl"')
 
     return vars(parser.parse_args(args))
 
@@ -102,7 +102,7 @@ def load_data(database_filepath):
     features = df[df.columns[df.columns.isin(possible_feature_columns)]]
     labels = df[df.columns[~df.columns.isin(possible_feature_columns)]]
     category_names = labels.columns
-    
+
     return features, labels, category_names
 
 
@@ -181,28 +181,85 @@ def build_model():
     -------
     scikit-learn Pipeline that includes a tf-idf step and a RandomForestClassifier
     '''
+
     pipeline = Pipeline([
-    ('text_analysis', ColumnTransformer(transformers=[('tf-idf', 
-                                      TfidfVectorizer(tokenizer=tokenize),
-                                     'message')],
-                                        remainder='passthrough', 
-                                        verbose=True)),
-    ('classifier', RandomForestClassifier(n_estimators=10))
-    ], 
-    verbose=True)
-    
+        ('text_analysis', ColumnTransformer(transformers=[('tf-idf',
+                                                           TfidfVectorizer(
+                                                               tokenizer=tokenize),
+                                                           'message')],
+                                            remainder='passthrough',
+                                            verbose=True)),
+        ('classifier', RandomForestClassifier(n_estimators=10))
+    ],
+        verbose=True)
+
     return pipeline
 
 
 def evaluate_model(model, X_test, Y_test, category_names):
-    pass
+    '''
+    Predicts the labels for the test set and then generates a classification report
+    outlining how well the model performed with its predictions.
+
+
+    Parameters
+    ----------
+    model: trained scikit-learn Pipeline object that contains a classifier of some sort
+
+    X_test: pandas DataFrame/Series or numpy array. All of the feature data set aside for testing
+
+    Y_test: pandas DataFrame/Series or numpy array. All of the label/target data set aside for testing
+
+    category_names: list of str. Names of all possible labels, ordered as they are in Y_test.
+        These are used to provide meaningful column names in the output report
+
+
+    Returns
+    -------
+    pandas DataFrame representing the classification results. The metric assumed most relevant
+        for an imbalanced multi-label prediction of this sort is 'f1-score, weighted avg'
+    '''
+    labels_pred = model.predict(X_test)
+
+    class_report_dict = classification_report(labels_test, labels_pred,
+                                              target_names=category_names,
+                                              digits=2, output_dict=True)
+
+    return pd.DataFrame.from_dict(class_report_dict)
 
 
 def save_model(model, model_filepath):
-    pass
+    '''
+    Saves model as a PKL (pickle) file to disk for later use.     
+    Code from https://scikit-learn.org/stable/modules/model_persistence.html
+
+
+    Parameters
+    ----------
+    model: trained scikit-learn Pipeline object that contains a classifier of some sort
+
+    model_filepath: str. Filepath (including filename.pkl) where you want the model stored.
+        Typical values are of the format "../../models/date-trained_model-name.pkl"
+
+
+    Returns
+    -------
+    Nothing, just saves model to disk.
+    '''
+
+    dump(model, model_filepath)
 
 
 def main():
+    '''
+    Runs through each stage of the modeling process:
+
+    1. Data loading
+    2. Model building
+    3. Model fitting/training
+    4. Model testing
+    5. Saving the model for future use
+    '''
     if len(sys.argv) == 3:
         database_filepath = args['database_filepath']
         model_filepath = args['model_filepath']
