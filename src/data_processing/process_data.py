@@ -39,7 +39,7 @@ def parse_args(args):
 
     parser.add_argument('database_filepath', type=str, help='Relative filepath for saving \
     the SQLite3 database result. There should be a *.db filename at the end of it. \
-    Typically this is of the form "../data/database_name.db"')
+    Typically this is of the form "../../data/database_name.db"')
 
     return vars(parser.parse_args(args))
 
