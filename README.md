@@ -38,17 +38,23 @@ I completed this project as part of the [Udacity Data Scientist Nanodegree](http
 A number of scripts and data files are utilized to make this project a reality:
 
 1. `notebooks/`
-	1. `ETL Pipeline Preparation.ipynb`: 
-	2. `ML Pipeline Preparation.ipynb`: 
-1. `data/`
-	1. `process_data.py`: 
-	2. `disaster_categories.csv`: 
-	3. `disaster_messages.csv`: 
+	1. `ETL Pipeline Preparation.ipynb`: a Jupyter notebook exploring options for ETL pipeline
+	2. `ML Pipeline Preparation.ipynb`: a Jupyter notebook testing different modeling pipelines
 2. `models/`
-	1. `train_classifier.py`: 
-3. `app/`
-	1. `run.py`: 
-	2. `templates/`:
+    1. `09-20-2019_RandomForest.joblib`: pickled trained classifier
+3. `data/`
+    1. `DisasterTweets.db`: sqlite3 database containing cleaned tweets and their categories data
+    2. `disaster_categories.csv`: manually-created categories for each tweet/message. Note that this is a multi-label classification problem, as more than one category can be assigned to a given tweet
+    3. `disaster_messages.csv`: tweets that are known to have been sent during a disaster of some kind
+2. `src/`
+    1. `data_processing/`
+        1. `process_data.py`: ETL pipeline script that can be executed from the command line and saves cleaned data to an sqlite3 database        
+    2. `models/`
+        1. `train_classifier.py`: script for building, fitting, and evaluating a modeling pipeline
+    3. `app/`
+        1. `run.py`: flask script for generating python-based web app to display project results and visualizations
+        2. `templates/`: HTML code for each web app page
+    4. `tests/`: directory containing unit tests designed for pytest
 		
 
 

@@ -2,6 +2,9 @@ import sys
 
 
 def load_data(database_filepath):
+    # Keep in mind that you now want more than just the 'messages' column
+    # in features, as we've added more feature columns
+    # Specifically want 'translated' and the named entity types you care about
     pass
 
 

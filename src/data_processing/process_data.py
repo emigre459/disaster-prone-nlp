@@ -2,7 +2,12 @@ import sys
 import argparse
 
 import pandas as pd
+import numpy as np
+
 from sqlalchemy import create_engine
+
+import spacy
+import en_core_web_sm
 
 
 def parse_args(args):
@@ -118,6 +123,110 @@ def clean_data(df):
 	# drop duplicates
 	return df.drop_duplicates()
 
+
+def create_named_entities_feature(df):
+    '''
+    Creates new columns to correspond to the counts of types of named entities in the text
+    that we care about for the purposes of disaster message classification.
+    
+    
+    Parameters
+    ----------
+    df: pandas DataFrame of the format returned by clean_data().
+    
+    
+    Returns
+    -------
+    df with 12 new columns containing only float values corresponding to the 12 named entity
+        types we're interested in including as features to the classifier.
+    '''
+    
+    entities_of_interest = [
+    'PERSON',
+    'NORP',
+    'FAC',
+    'ORG',
+    'GPE',
+    'LOC',
+    'PRODUCT',
+    'EVENT',
+    'LANGUAGE',
+    'DATE',
+    'TIME',
+    'MONEY'
+    ]
+    
+    # Each column will be a count of how many of these entities there are in a message
+    # We start with all zeros
+    entities_zero_df = pd.DataFrame(data = np.zeros((len(df), len(entities_of_interest))), 
+                 columns=entities_of_interest, index = df.index)
+
+    # Make sure it's a DataFrame already. If just a Series, make it a DataFrame
+    if type(df) == pd.core.frame.DataFrame: pass
+    elif type(df) == pd.core.series.Series: df = pd.DataFrame(df)
+    else: raise ValueError('Input df is not a pandas Series or DataFrame')
+    
+    df = pd.concat([df, entities_zero_df], axis=1)
+    
+    def count_entities(row, allowed_entities):
+        '''
+        Analyzes the different named entity types present in a given message
+        and adds the count of each to the row. Meant to be used via 
+        df.apply(count_entities, axis=1)
+
+
+        Parameters
+        ----------
+        row: pandas Series representing a row of a DataFrame. Must contain
+            a 'message' column containing the text to be analyzed and already
+            have columns reflecting the desired entity types to be tracked
+            (any others identified in analysis will be dropped)
+
+        allowed_entities: list of str indicating entity type labels that we want to
+            count. Any missing from this list are dropped in the output
+
+
+        Returns
+        -------
+        row updated with counts of each unique entity type extracted from its message
+        '''
+
+        nlp = en_core_web_sm.load()
+        doc = nlp(row['message'])
+        label_counts = pd.Series([ent.label_ for ent in doc.ents \
+                                if ent.label_ in allowed_entities]).value_counts()
+        return label_counts
+    
+    entity_counts = df.apply(count_entities, 
+                             args=(entities_of_interest,),
+                             axis=1).fillna(0)
+
+    # Update features with the counts
+    df.loc[:, entity_counts.columns] = entity_counts
+    
+    return df
+    
+def create_translation_feature(df):
+    '''
+    Creates a new feature in a column called 'translated' that is 0 if the original (English)
+    'message' text matches the text in 'original' and 1 otherwise
+    
+    
+    Parameters
+    ----------
+    df: pandas DataFrame of the format returned by clean_data().
+    
+    
+    Returns
+    -------
+    df with new column 'translated' containing only 0s and 1s
+    '''
+    
+    df['translated'] = (df['message'] != df['original']).astype(int)  
+    
+    return df
+    
+
 def save_data(df, database_path):
 	'''
 	Saves the data in `df` in an sqlite3 database with a single table called "categorized_messages".
@@ -125,7 +234,8 @@ def save_data(df, database_path):
 	
 	Parameters
 	----------
-	df: pandas DataFrame of the format returned by clean_data().
+	df: pandas DataFrame of the format returned by clean_data() followed by the additional
+        feature creation functions.
 	
 	database_path: str defining the relative filepath for saving the SQLite3 database result. 
 		There should be a *.db filename at the end of it. 
@@ -158,6 +268,10 @@ def main():
 
         print('Cleaning data...')
         df = clean_data(df)
+        
+        print('Creating additional features from text...')
+        df = create_named_entities_feature(df)
+        df = create_translation_feature(df)
         
         print('Saving data...\n    DATABASE: {}'.format(database_filepath))
         save_data(df, database_filepath)
