@@ -43,9 +43,9 @@ def parse_args(args):
     parser = argparse.ArgumentParser(description='Loads up clean data from a SQLite3 database, \
     runs it through a machine learning pipeline, and classifies the messages from the database \
     as belonging to some subset of 36 potential disaster-related categories.')
-    
+
     database_filepath = args['database_filepath']
-        model_filepath = args['model_filepath']
+    model_filepath = args['model_filepath']
 
     parser.add_argument('database_filepath', type=str, help='Relative filepath for loading \
     the SQLite3 database result. There should be a *.db filename at the end of it. \
@@ -53,7 +53,7 @@ def parse_args(args):
 
     parser.add_argument('model_filepath', type=str, help='Relative filepath for saving the pickled model \
     after it is trained and ready to be used for predictions. This should be of the format \
-    "../../date-trained_model-name.pkl"')    
+    "../../date-trained_model-name.pkl"')
 
     return vars(parser.parse_args(args))
 
@@ -61,26 +61,49 @@ def parse_args(args):
 def load_data(database_filepath):
     '''
     Loads data from the identified sqlite3 database file. 
-    
-    
+
+
     Parameters
     ----------
     database_filepath: str. Filepath of sqlite3 database file. 
         The database should contain only a single table called "categorized_messages".
-        
-        
+
+
     Returns
     -------
     3-tuple of the form (features, labels, category_names) where category_names 
         refers to the unique labels of every possible predicted category
     '''
-    # Keep in mind that you now want more than just the 'messages' column
-    # in features, as we've added more feature columns
-    # Specifically want 'translated' and the named entity types you care about
+
     engine = create_engine('sqlite:///../data/DisasterTweets.db')
     df = pd.read_sql_table('categorized_messages', engine)
-    features = df['message']??
-    labels = df.iloc[:, 4:]??
+
+    # Drop columns 'original' and 'id' as we don't need them at this stage
+    df.drop(columns=['original', 'id'], inplace=True)
+
+    # Select only 'message', 'translated', and 'entity_*' columns for features
+    possible_feature_columns = ['message',
+                                'translated',
+                                'PERSON',
+                                'NORP',
+                                'FAC',
+                                'ORG',
+                                'GPE',
+                                'LOC',
+                                'PRODUCT',
+                                'EVENT',
+                                'LANGUAGE',
+                                'DATE',
+                                'TIME',
+                                'MONEY']
+
+    # Keep any columns that match our allowed column list for features
+    # and keep any columns that DON'T match for the labels
+    features = df[df.columns[df.columns.isin(possible_feature_columns)]]
+    labels = df[df.columns[~df.columns.isin(possible_feature_columns)]]
+    category_names = labels.columns
+    
+    return features, labels, category_names
 
 
 def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
@@ -92,77 +115,86 @@ def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
         4. Tokenizes the text into individual words
         5. Removes common English stopwords
         6. If enabled, lemmatizes the remaining words
-        
-        
+
+
     Parameters
     ----------
     text: string representing a single message
-    
+
     lemma: bool. Indicates if lemmatization should be done
-    
+
     use_spacy_full: bool. If True, performs a full corpus analysis (POS, lemmas of all types, etc.) 
         using the spacy package instead of nltk lemmatization
-        
+
     use_spacy_lemma_only: bool. If True, only performs verb-based lemmatization. Faster than full spacy
         corpus analysis by about 88x.
-    
-    
+
+
     Returns
     -------
     List of processed strings from a single message
     '''
-    
+
     # Strip leading and trailing whitespace
     text = text.strip()
-    
+
     # Make everything lowercase
     text = text.lower()
-    
+
     # Retain only parts of text that are non-punctuation
     text = re.sub(r"[^a-zA-Z0-9]", " ", text)
-    
+
     # Tokenize into individual words
     words = word_tokenize(text)
-    
+
     # Remove common English stopwords
     words = [w for w in words if w not in stopwords.words("english")]
-    
+
     # Lemmatize to root words, if option is enabled
     if lemma and not use_spacy_full and not use_spacy_lemma_only:
         words = [WordNetLemmatizer().lemmatize(w, pos='v') for w in words]
-    
+
     elif lemma and use_spacy_full:
         nlp = en_core_web_sm.load()
         doc = nlp(text)
         words = [token.lemma_ for token in doc if not token.is_stop]
-        
-    elif lemma and use_spacy_lemma_only:        
+
+    elif lemma and use_spacy_lemma_only:
         from spacy.lemmatizer import Lemmatizer
         from spacy.lang.en import LEMMA_INDEX, LEMMA_EXC, LEMMA_RULES
         lemmatizer = Lemmatizer(LEMMA_INDEX, LEMMA_EXC, LEMMA_RULES)
         words = [lemmatizer(w, u"VERB")[0] for w in words]
-        
-        
-    return  words
+
+    return words
 
 
 def build_model():
     '''
     Builds the modeling pipeline that can then be trained and tested.
-    
-    
+
+
     Parameters
     ----------
-    
-    
+
+
     Returns
     -------
     scikit-learn Pipeline that includes a tf-idf step and a RandomForestClassifier
     '''
-    pass
+    pipeline = Pipeline([
+    ('text_analysis', ColumnTransformer(transformers=[('tf-idf', 
+                                      TfidfVectorizer(tokenizer=tokenize),
+                                     'message')],
+                                        remainder='passthrough', 
+                                        verbose=True)),
+    ('classifier', RandomForestClassifier(n_estimators=10))
+    ], 
+    verbose=True)
+    
+    return pipeline
 
 
-def evaluate_model(model, X_test, Y_test, category_names):    
+def evaluate_model(model, X_test, Y_test, category_names):
     pass
 
 
@@ -174,18 +206,18 @@ def main():
     if len(sys.argv) == 3:
         database_filepath = args['database_filepath']
         model_filepath = args['model_filepath']
-        
-        
+
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
-        
+        X_train, X_test, Y_train, Y_test = train_test_split(
+            X, Y, test_size=0.2)
+
         print('Building model...')
         model = build_model()
-        
+
         print('Training model...')
         model.fit(X_train, Y_train)
-        
+
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
 
@@ -195,9 +227,9 @@ def main():
         print('Trained model saved!')
 
     else:
-        print('Please provide the filepath of the disaster messages database '\
-              'as the first argument and the filepath of the pickle file to '\
-              'save the model to as the second argument. \n\nExample: python '\
+        print('Please provide the filepath of the disaster messages database '
+              'as the first argument and the filepath of the pickle file to '
+              'save the model to as the second argument. \n\nExample: python '
               'train_classifier.py ../../data/DisasterResponse.db classifier.pkl')
 
 
