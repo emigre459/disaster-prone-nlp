@@ -20,8 +20,6 @@ from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 
 from joblib import dump, load
 
@@ -61,17 +59,106 @@ def parse_args(args):
 
 
 def load_data(database_filepath):
+    '''
+    Loads data from the identified sqlite3 database file. 
+    
+    
+    Parameters
+    ----------
+    database_filepath: str. Filepath of sqlite3 database file. 
+        The database should contain only a single table called "categorized_messages".
+        
+        
+    Returns
+    -------
+    3-tuple of the form (features, labels, category_names) where category_names 
+        refers to the unique labels of every possible predicted category
+    '''
     # Keep in mind that you now want more than just the 'messages' column
     # in features, as we've added more feature columns
     # Specifically want 'translated' and the named entity types you care about
-    pass
+    engine = create_engine('sqlite:///../data/DisasterTweets.db')
+    df = pd.read_sql_table('categorized_messages', engine)
+    features = df['message']??
+    labels = df.iloc[:, 4:]??
 
 
-def tokenize(text):
-    pass
+def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
+    '''
+    Performs various preprocessing steps on a single piece of text. Specifically, this function:
+        1. Strips all leading and trailing whitespace
+        2. Makes everything lowercase
+        3. Removes punctuation
+        4. Tokenizes the text into individual words
+        5. Removes common English stopwords
+        6. If enabled, lemmatizes the remaining words
+        
+        
+    Parameters
+    ----------
+    text: string representing a single message
+    
+    lemma: bool. Indicates if lemmatization should be done
+    
+    use_spacy_full: bool. If True, performs a full corpus analysis (POS, lemmas of all types, etc.) 
+        using the spacy package instead of nltk lemmatization
+        
+    use_spacy_lemma_only: bool. If True, only performs verb-based lemmatization. Faster than full spacy
+        corpus analysis by about 88x.
+    
+    
+    Returns
+    -------
+    List of processed strings from a single message
+    '''
+    
+    # Strip leading and trailing whitespace
+    text = text.strip()
+    
+    # Make everything lowercase
+    text = text.lower()
+    
+    # Retain only parts of text that are non-punctuation
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text)
+    
+    # Tokenize into individual words
+    words = word_tokenize(text)
+    
+    # Remove common English stopwords
+    words = [w for w in words if w not in stopwords.words("english")]
+    
+    # Lemmatize to root words, if option is enabled
+    if lemma and not use_spacy_full and not use_spacy_lemma_only:
+        words = [WordNetLemmatizer().lemmatize(w, pos='v') for w in words]
+    
+    elif lemma and use_spacy_full:
+        nlp = en_core_web_sm.load()
+        doc = nlp(text)
+        words = [token.lemma_ for token in doc if not token.is_stop]
+        
+    elif lemma and use_spacy_lemma_only:        
+        from spacy.lemmatizer import Lemmatizer
+        from spacy.lang.en import LEMMA_INDEX, LEMMA_EXC, LEMMA_RULES
+        lemmatizer = Lemmatizer(LEMMA_INDEX, LEMMA_EXC, LEMMA_RULES)
+        words = [lemmatizer(w, u"VERB")[0] for w in words]
+        
+        
+    return  words
 
 
 def build_model():
+    '''
+    Builds the modeling pipeline that can then be trained and tested.
+    
+    
+    Parameters
+    ----------
+    
+    
+    Returns
+    -------
+    scikit-learn Pipeline that includes a tf-idf step and a RandomForestClassifier
+    '''
     pass
 
 

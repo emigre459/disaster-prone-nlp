@@ -193,7 +193,7 @@ def create_named_entities_feature(df):
 
         nlp = en_core_web_sm.load()
         doc = nlp(row['message'])
-        label_counts = pd.Series([ent.label_ for ent in doc.ents \
+        label_counts = pd.Series(["entity_" + ent.label_ for ent in doc.ents \
                                 if ent.label_ in allowed_entities]).value_counts()
         return label_counts
     
