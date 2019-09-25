@@ -7,6 +7,7 @@ This project uses natural language processing to categorize tweets received duri
 1. [Usage](#usage)
 2. [Project Motivation](#motivation)
 3. [File Descriptions](#files)
+4. [Modeling Details](#model)
 4. [Licensing, Authors, and Acknowledgements](#licensing)
 
 ## Usage <a name="usage"></a>
@@ -38,19 +39,32 @@ I completed this project as part of the [Udacity Data Scientist Nanodegree](http
 A number of scripts and data files are utilized to make this project a reality:
 
 1. `notebooks/`
-	1. `ETL Pipeline Preparation.ipynb`: 
-	2. `ML Pipeline Preparation.ipynb`: 
-1. `data/`
-	1. `process_data.py`: 
-	2. `disaster_categories.csv`: 
-	3. `disaster_messages.csv`: 
+	1. `ETL Pipeline Preparation.ipynb`: a Jupyter notebook exploring options for ETL pipeline
+	2. `ML Pipeline Preparation.ipynb`: a Jupyter notebook testing different modeling pipelines
 2. `models/`
-	1. `train_classifier.py`: 
-3. `app/`
-	1. `run.py`: 
-	2. `templates/`:
+    1. `09-20-2019_RandomForest.joblib`: pickled trained classifier
+3. `data/`
+    1. `DisasterTweets.db`: sqlite3 database containing cleaned tweets and their categories data
+    2. `disaster_categories.csv`: manually-created categories for each tweet/message. Note that this is a multi-label classification problem, as more than one category can be assigned to a given tweet
+    3. `disaster_messages.csv`: tweets that are known to have been sent during a disaster of some kind
+2. `src/`
+    1. `data_processing/`
+        1. `process_data.py`: ETL pipeline script that can be executed from the command line and saves cleaned data to an sqlite3 database        
+    2. `models/`
+        1. `train_classifier.py`: script for building, fitting, and evaluating a modeling pipeline
+    3. `app/`
+        1. `run.py`: flask script for generating python-based web app to display project results and visualizations
+        2. `templates/`: HTML code for each web app page
+    4. `tests/`: directory containing unit tests designed for pytest
 		
 
+## Modeling Details <a name="model"></a>
+
+The training data provided for this project had 36 unique labels (disaster information categories) and each message could have more than one label as its categories of relevance. As such, this is [a multi-label classification problem](https://en.wikipedia.org/wiki/Multi-label_classification), making it particularly challenging for predictive modeling. In essence, the tried-and-true evaluation metrics (e.g. AUC ROC or standard f1-score) are not directly applicable to this problem, but instead require tweaking and reinterpretation given the nature of the classes and labels. For this project, I decided to use a weighted average f1-score as an overall model evaluation metric, because the weighted (harmonic, I believe) average of the f1-scores across labels accounted for the imbalance of samples across each label.
+
+Speaking of imbalanced labels, this dataset is rife with them. Some labels are so underrepresented (one, `child_alone` even has *zero* samples) that the model predicts a constant value for them, skewing the f1 score (since no true positives for the label means a score of 0). I would normally combat this via my initial sampling method for creating test and training sets and for setting up training and validation folds in cross-validation. But since the membership of some of these labels is zero or one, there are too few samples to take this approach and I instead had to rely simply on random sampling. This lack (or very small number) of positive samples for certain labels skewed the precision high and the recall low. You can see the breakdown of positive (1) and negative (0) samples per label below.
+
+![alt text](category_membership.png "Fractions of samples belonging to each category")
 
 ## Licensing, Authors, and Acknowledgements <a name="licensing"></a>
 
