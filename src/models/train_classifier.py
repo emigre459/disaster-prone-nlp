@@ -46,9 +46,6 @@ def parse_args(args):
     runs it through a machine learning pipeline, and classifies the messages from the database \
     as belonging to some subset of 36 potential disaster-related categories.')
 
-    database_filepath = args['database_filepath']
-    model_filepath = args['model_filepath']
-
     parser.add_argument('database_filepath', type=str, help='Relative filepath for loading \
     the SQLite3 database result. There should be a *.db filename at the end of it. \
     Typically this is of the form "../../data/database_name.db"')
@@ -201,7 +198,8 @@ def build_model():
 def evaluate_model(model, features_test, labels_test, category_names):
     '''
     Predicts the labels for the test set and then generates a classification report
-    outlining how well the model performed with its predictions.
+    outlining how well the model performed with its predictions. The report is returned
+    as a pandas DataFrame and printed to stdout.
 
 
     Parameters
@@ -226,8 +224,11 @@ def evaluate_model(model, features_test, labels_test, category_names):
     class_report_dict = classification_report(labels_test, labels_pred,
                                               target_names=category_names,
                                               digits=2, output_dict=True)
+    
+    class_report = pd.DataFrame.from_dict(class_report_dict)
+    print(class_report)
 
-    return pd.DataFrame.from_dict(class_report_dict)
+    return class_report
 
 
 def save_model(model, model_filepath):
@@ -263,6 +264,8 @@ def main():
     5. Saving the model for future use
     '''
     if len(sys.argv) == 3:
+        args = parse_args(sys.argv[1:])
+        
         database_filepath = args['database_filepath']
         model_filepath = args['model_filepath']
 
@@ -291,7 +294,7 @@ def main():
         print('Please provide the filepath of the disaster messages database '
               'as the first argument and the filepath of the pickle file to '
               'save the model to as the second argument. \n\nExample: python '
-              'train_classifier.py ../../data/DisasterResponse.db classifier.pkl')
+              'train_classifier.py ../../data/DisasterTweets.db ../../models/01-01-2019_ModelName.pkl')
 
 
 if __name__ == '__main__':
