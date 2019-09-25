@@ -157,7 +157,7 @@ def test_build_model(features, labels, model):
     assert(type(model['classifier']) == RandomForestClassifier)
 
 
-def test_evaluate_model(features, labels, model):
+def test_evaluate_model(features, labels, category_names, model):
     '''
     Checks that a pandas DataFrame of the form produced by scikit-learn's
     classification_report() is produced. 
@@ -183,8 +183,15 @@ def test_evaluate_model(features, labels, model):
     required_columns += ['micro avg', 'macro avg',
                          'weighted avg', 'samples avg']
 
-    validate(evaluate_model(features.loc[11:21], labels.loc[11:21], model).columns, set(required_columns))
-    validate(evaluate_model(features.loc[11:21], labels.loc[11:21], model).index, set(required_index))
+    validate(evaluate_model(model, 
+                            features.loc[11:21], 
+                            labels.loc[11:21], 
+                            category_names).columns, set(required_columns))
+    
+    validate(evaluate_model(model, 
+                            features.loc[11:21], 
+                            labels.loc[11:21], 
+                            category_names).index, set(required_index))
 
 
 def test_save_model(model, tmp_path):

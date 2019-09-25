@@ -21,6 +21,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
 
 from joblib import dump, load
 
@@ -197,7 +198,7 @@ def build_model():
     return pipeline
 
 
-def evaluate_model(model, X_test, Y_test, category_names):
+def evaluate_model(model, features_test, labels_test, category_names):
     '''
     Predicts the labels for the test set and then generates a classification report
     outlining how well the model performed with its predictions.
@@ -220,7 +221,7 @@ def evaluate_model(model, X_test, Y_test, category_names):
     pandas DataFrame representing the classification results. The metric assumed most relevant
         for an imbalanced multi-label prediction of this sort is 'f1-score, weighted avg'
     '''
-    labels_pred = model.predict(X_test)
+    labels_pred = model.predict(features_test)
 
     class_report_dict = classification_report(labels_test, labels_pred,
                                               target_names=category_names,
