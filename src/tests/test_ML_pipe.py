@@ -132,7 +132,7 @@ this week."
     assert(tokenize(test_text) == expected_output)
 
 
-def test_build_model():
+def test_build_model(features, labels, model):
     '''
     Checks that the pipeline is constructed with the expected architecture.
     Specifically:
@@ -143,6 +143,11 @@ def test_build_model():
             i. tf-idf (TfidfVectorizer object)
         b. classifier (RandomForestClassifier object)
     '''
+
+    # Need to fit the model to some small amount of data so ColumnTransformer
+    # has fitted transformers to report back
+    model.fit(features.loc[0:10], labels.loc[0:10])
+    
     assert(type(model) == Pipeline)
 
     assert(type(model['text_analysis']) == ColumnTransformer)
@@ -152,11 +157,15 @@ def test_build_model():
     assert(type(model['classifier']) == RandomForestClassifier)
 
 
-def test_evaluate_model(model):
+def test_evaluate_model(features, labels, model):
     '''
     Checks that a pandas DataFrame of the form produced by scikit-learn's
     classification_report() is produced. 
     '''
+    # Need to fit the model to some small amount of data
+    # so there's something to predict with
+    model.fit(features.loc[0:10], labels.loc[0:10])
+    
     # Index should be ['precision', 'recall', 'f1-score', 'support']
     required_index = ['precision', 'recall', 'f1-score', 'support']
 
@@ -174,8 +183,8 @@ def test_evaluate_model(model):
     required_columns += ['micro avg', 'macro avg',
                          'weighted avg', 'samples avg']
 
-    validate(evaluate_model(model).columns, set(required_columns))
-    validate(evaluate_model(model).index, set(required_index))
+    validate(evaluate_model(features.loc[11:21], labels.loc[11:21], model).columns, set(required_columns))
+    validate(evaluate_model(features.loc[11:21], labels.loc[11:21], model).index, set(required_index))
 
 
 def test_save_model(model, tmp_path):
