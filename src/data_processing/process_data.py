@@ -141,19 +141,20 @@ def create_named_entities_feature(df):
         types we're interested in including as features to the classifier.
     '''
     
+    # Have to have "entity_" in front so these don't end up duplicating names of other features
     entities_of_interest = [
-    'PERSON',
-    'NORP',
-    'FAC',
-    'ORG',
-    'GPE',
-    'LOC',
-    'PRODUCT',
-    'EVENT',
-    'LANGUAGE',
-    'DATE',
-    'TIME',
-    'MONEY'
+    'entity_PERSON',
+    'entity_NORP',
+    'entity_FAC',
+    'entity_ORG',
+    'entity_GPE',
+    'entity_LOC',
+    'entity_PRODUCT',
+    'entity_EVENT',
+    'entity_LANGUAGE',
+    'entity_DATE',
+    'entity_TIME',
+    'entity_MONEY'
     ]
     
     # Each column will be a count of how many of these entities there are in a message
@@ -194,7 +195,7 @@ def create_named_entities_feature(df):
         nlp = en_core_web_sm.load()
         doc = nlp(row['message'])
         label_counts = pd.Series(["entity_" + ent.label_ for ent in doc.ents \
-                                if ent.label_ in allowed_entities]).value_counts()
+                                if "entity_" + ent.label_ in allowed_entities]).value_counts()
         return label_counts
     
     entity_counts = df.apply(count_entities, 

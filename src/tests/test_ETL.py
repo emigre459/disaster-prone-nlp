@@ -124,9 +124,6 @@ def test_saving(tmp_path, clean_df):
     to an sqlite3 database
     '''
 
-    # TODO: figure out why you're getting an OperationalError 435 from sqlalchemy
-    # then uncomment tests
-    #save_data(clean_df, str(tmp_path))
-    # assert(os.path.join(tmp_path, 'test_database.db'))
-    pass
+    save_data(clean_df, str(os.path.join(tmp_path, 'test_database.db')))
+    assert(os.path.isfile(os.path.join(tmp_path, 'test_database.db')))
     

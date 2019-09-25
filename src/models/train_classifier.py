@@ -1,5 +1,6 @@
 import sys
 import argparse
+from time import time
 
 import pandas as pd
 import numpy as np
@@ -75,27 +76,27 @@ def load_data(database_filepath):
         refers to the unique labels of every possible predicted category
     '''
 
-    engine = create_engine('sqlite:///../data/DisasterTweets.db')
+    engine = create_engine('sqlite:///' + database_filepath)
     df = pd.read_sql_table('categorized_messages', engine)
 
-    # Drop columns 'original' and 'id' as we don't need them at this stage
-    df.drop(columns=['original', 'id'], inplace=True)
+    # Drop columns 'original', 'genre' and 'id' as we don't need them at this stage
+    df.drop(columns=['original', 'id', 'genre'], inplace=True)
 
     # Select only 'message', 'translated', and 'entity_*' columns for features
     possible_feature_columns = ['message',
                                 'translated',
-                                'PERSON',
-                                'NORP',
-                                'FAC',
-                                'ORG',
-                                'GPE',
-                                'LOC',
-                                'PRODUCT',
-                                'EVENT',
-                                'LANGUAGE',
-                                'DATE',
-                                'TIME',
-                                'MONEY']
+                                'entity_PERSON',
+                                'entity_NORP',
+                                'entity_FAC',
+                                'entity_ORG',
+                                'entity_GPE',
+                                'entity_LOC',
+                                'entity_PRODUCT',
+                                'entity_EVENT',
+                                'entity_LANGUAGE',
+                                'entity_DATE',
+                                'entity_TIME',
+                                'entity_MONEY']
 
     # Keep any columns that match our allowed column list for features
     # and keep any columns that DON'T match for the labels
@@ -273,7 +274,9 @@ def main():
         model = build_model()
 
         print('Training model...')
+        time0 = time()
         model.fit(X_train, Y_train)
+        print(f"Model trained in {(time()-time0) * 60} minutes")
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)

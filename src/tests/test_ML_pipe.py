@@ -3,7 +3,12 @@ import pandas as pd
 import os
 
 # datatest is a pytest extension for data validation
-from datatest import validate
+from datatest import validate, accepted, Extra
+
+from sklearn.pipeline import Pipeline
+from sklearn.compose._column_transformer import ColumnTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.ensemble.forest import RandomForestClassifier
 
 from src.models.train_classifier import load_data, tokenize, build_model, evaluate_model, save_model
 
@@ -33,17 +38,14 @@ def category_names():
 def model():
     return build_model()
 
+
 def test_feature_columns(features):
     '''
-    Expect that there will be 53 columns in total
+    Expect that there will be 14 columns in total
     with a very specific set of names
     '''
 
     required_columns = {'message',
-                        'related',
-                        'earthquake',
-                        'other_weather',
-                        'direct_report',
                         'entity_PERSON',
                         'entity_NORP',
                         'entity_FAC',
@@ -58,9 +60,25 @@ def test_feature_columns(features):
                         'entity_MONEY',
                         'translated'}
 
-    # Allow for there to be more columns than just these. Really just spot-checking these
-    with accepted(Extra):
-        validate(features.columns, required_columns)
+    validate(features.columns, required_columns)
+
+
+def test_label_columns(labels):
+    '''
+    Expect that there will be 36 columns in total
+    with a very specific set of names
+    '''
+
+    required_columns = {'related', 'request', 'offer', 'aid_related', 'medical_help',
+                        'medical_products', 'search_and_rescue', 'security', 'military',
+                        'child_alone', 'water', 'food', 'shelter', 'clothing', 'money',
+                        'missing_people', 'refugees', 'death', 'other_aid',
+                        'infrastructure_related', 'transport', 'buildings', 'electricity',
+                        'tools', 'hospitals', 'shops', 'aid_centers', 'other_infrastructure',
+                        'weather_related', 'floods', 'storm', 'fire', 'earthquake', 'cold',
+                        'other_weather', 'direct_report'}
+
+    validate(labels.columns, required_columns)
 
 
 def test_tokenize():
@@ -69,12 +87,12 @@ def test_tokenize():
     The test string being used was taken from https://spacy.io/
     '''
 
-    test_text = "When Sebastian Thrun started working on self-driving cars at "
-    "Google in 2007, few people outside of the company took him "
-    "seriously. “I can tell you very senior CEOs of major American "
-    "car companies would shake my hand and turn away because I wasn’t "
-    "worth talking to,” said Thrun, in an interview with Recode earlier "
-    "this week."
+    test_text = "When Sebastian Thrun started working on self-driving cars at \
+Google in 2007, few people outside of the company took him \
+seriously. “I can tell you very senior CEOs of major American \
+car companies would shake my hand and turn away because I wasn’t \
+worth talking to,” said Thrun, in an interview with Recode earlier \
+this week."
 
     expected_output = ['sebastian',
                        'thrun',
@@ -125,14 +143,13 @@ def test_build_model():
             i. tf-idf (TfidfVectorizer object)
         b. classifier (RandomForestClassifier object)
     '''
-    assert(type(model) == sklearn.pipeline.Pipeline)
+    assert(type(model) == Pipeline)
 
-    assert(type(model['text_analysis']) ==
-           sklearn.compose._column_transformer.ColumnTransformer)
+    assert(type(model['text_analysis']) == ColumnTransformer)
     assert(type(model['text_analysis'].named_transformers_[
-           'tf-idf']) == sklearn.feature_extraction.text.TfidfVectorizer)
-    
-    assert(type(model['classifier']) == sklearn.ensemble.forest.RandomForestClassifier)
+           'tf-idf']) == TfidfVectorizer)
+
+    assert(type(model['classifier']) == RandomForestClassifier)
 
 
 def test_evaluate_model(model):
@@ -165,6 +182,6 @@ def test_save_model(model, tmp_path):
     '''
     Check that a pickled model is saved as expected
     '''
-        
+
     save_model(model, str(os.path.join(tmp_path, 'test_model.pkl')))
     assert(os.path.isfile(os.path.join(tmp_path, 'test_model.pkl')))
