@@ -196,12 +196,19 @@ def index():
                                     var_name='entity type',
                                     value_name='count')
 
+    # Remove "entity_" from start of each entity type value
     melted_entities['entity type'] = melted_entities['entity type'].str.slice(
         7,)
 
+    # Make a pre-computed aggregation df so plotly doesn't have to do it
     melted_entities_bar = melted_entities.groupby('entity type',
                                                   as_index=False)['count'].sum().sort_values('count',
                                                                                              ascending=False)
+    
+    # Rename so plotly express defaults make good axis titles
+    melted_entities_bar.rename(columns={'entity type': 'Named Entity Type',
+                           'count': 'Number of Entities in Corpus'},
+                          inplace=True)
 
     # create visuals
     graphs = [
@@ -243,8 +250,10 @@ def index():
             tickangle=-45)),
 
         # NUMBER OF DIFFERENT ENTITY TYPES ACROSS CORPUS
-        # px.bar(melted_entities_bar,
-        #      y='count', x='entity type', color='entity type'),
+        px.bar(melted_entities_bar,
+              y='Number of Entities in Corpus', 
+             x='Named Entity Type', 
+             color='Named Entity Type').update_layout(showlegend=False),
 
 
         # DISTRIBUTION OF ENTITY TYPE COUNTS PER MESSAGE
