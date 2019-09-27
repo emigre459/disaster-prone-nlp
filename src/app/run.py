@@ -10,7 +10,9 @@ import re
 
 from flask import Flask
 from flask import render_template, request, jsonify
-from plotly.graph_objs import Bar
+#from plotly.graph_objects import Bar
+from plotly import graph_objects
+import plotly.express as px
 
 import joblib
 from sqlalchemy import create_engine
@@ -22,6 +24,7 @@ from src.data_processing.process_data import create_named_entities_feature
 
 
 app = Flask(__name__)
+
 
 def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
     '''
@@ -84,34 +87,61 @@ def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
 
     return words
 
+
 def prepare_message_text(text):
     '''
     Used on query text to extract extra feature information for model prediction.
     Specifically, it assumes that the message is written in English (thus `translated` = 0)
     and then extracts named entities and keeps the ones we kept as part of the model training
     process.
-    
+
     Parameters
     ----------
     text: str. Message submitted by the user for classification.
-    
-    
+
+
     Returns
     -------
     pandas DataFrame with columns `message`, `translated`, and 12 others corresponding
         to various named entity types of interest
     '''
-    
-    df = pd.DataFrame({'message': text}, index = [0])
+
+    df = pd.DataFrame({'message': text}, index=[0])
     df = create_named_entities_feature(df)
     df['translated'] = 0
-    
+
     return df
+
 
 # load data
 # TODO: change to 'sqlite:///../data/DisasterTweets.db' in Udacity workspace
 engine = create_engine('sqlite:///../../data/DisasterTweets.db')
 df = pd.read_sql_table('categorized_messages', engine)
+
+# Drop columns 'original', and 'id' as we don't need them at this stage
+df.drop(columns=['original', 'id'], inplace=True)
+
+possible_feature_columns = ['message',
+                            'translated',
+                            'entity_PERSON',
+                            'entity_NORP',
+                            'entity_FAC',
+                            'entity_ORG',
+                            'entity_GPE',
+                            'entity_LOC',
+                            'entity_PRODUCT',
+                            'entity_EVENT',
+                            'entity_LANGUAGE',
+                            'entity_DATE',
+                            'entity_TIME',
+                            'entity_MONEY']
+
+# Keep any columns that match our allowed column list for features
+# and keep any columns that DON'T match for the labels
+features = df.loc[:, df.columns[df.columns.isin(possible_feature_columns)]]
+labels = df.loc[:, df.columns[~df.columns.isin(
+    possible_feature_columns)]].drop(columns=['genre'])
+category_names = labels.columns
 
 # load model
 # TODO: change to "../models/09-25-2019_RandomForest_added_features.pkl" when in Udacity workspace
@@ -122,21 +152,66 @@ model = joblib.load("../../models/09-25-2019_RandomForest_added_features.pkl")
 @app.route('/')
 @app.route('/index')
 def index():
-    
+
     # extract data needed for visuals
     # TODO: Below is an example - modify to extract data for your own visuals
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
-    
+
+    entities_of_interest = ['entity_PERSON',
+                            'entity_NORP',
+                            'entity_FAC',
+                            'entity_ORG',
+                            'entity_GPE',
+                            'entity_LOC',
+                            'entity_PRODUCT',
+                            'entity_EVENT',
+                            'entity_LANGUAGE',
+                            'entity_DATE',
+                            'entity_TIME',
+                            'entity_MONEY']
+
+    # TODO: need to figure out how I can access labels and features from training data...
+    labels.loc[:, 'message index'] = labels.index
+
+    labels_melted = labels.melt(id_vars=['message index'],
+                                value_vars=list(
+                                    labels.columns.drop(['message index'])),
+                                var_name='category', value_name='category membership')
+
+    # Do the heavy lifting of calculating the data for showing fractions of messages per label/category
+    # in pandas and python, so javascript doesn't have to do it via plotly histogram when in web app
+
+    category_message_counts = pd.DataFrame(labels_melted.groupby('category')[
+                                           'category membership']
+                                           .sum())\
+        .reset_index().sort_values('category membership', ascending=False)
+    category_message_counts.rename(columns={'category membership': 'Messages in This Category',
+                                            'category': 'Category'}, inplace=True)
+    category_message_counts['Messages Not in This Category'] = \
+        len(df) - category_message_counts['Messages in This Category']
+
+    melted_entities = features.melt(id_vars=['message'],
+                                    value_vars=entities_of_interest,
+                                    var_name='entity type',
+                                    value_name='count')
+
+    melted_entities['entity type'] = melted_entities['entity type'].str.slice(
+        7,)
+
+    melted_entities_bar = melted_entities.groupby('entity type',
+                                                  as_index=False)['count'].sum().sort_values('count',
+                                                                                             ascending=False)
+
     # create visuals
-    # TODO: Below is an example - modify to create your own visuals
     graphs = [
         {
             'data': [
-                Bar(
+                graph_objects.Bar(
                     x=genre_names,
                     y=genre_counts
-                )
+                ),
+
             ],
 
             'layout': {
@@ -148,13 +223,38 @@ def index():
                     'title': "Genre"
                 }
             }
-        }
+        },
+
+        # DISTRIBUTION OF TRANSLATED MESSAGES
+        px.histogram(features, x='translated', color='translated',
+                     labels={'translated': 'Message Translated Into English?'},
+                     title='Distribution of Messages Translated From Another Language (1) or Natively English (0)')\
+        .update_layout(yaxis=graph_objects.layout.YAxis(
+            title=graph_objects.layout.yaxis.Title(
+                text="Number of Messages"))),
+
+        # FRACTION OF MESSAGES PER CATEGORY
+        px.bar(category_message_counts, y='Messages in This Category', x='Category',  # facet_col='category',
+               color='Messages in This Category',
+               color_continuous_scale='Emrld',
+               barmode='relative',
+               title='Number of Messages In Each Category')\
+        .update_layout(xaxis=graph_objects.layout.XAxis(
+            tickangle=-45)),
+
+        # NUMBER OF DIFFERENT ENTITY TYPES ACROSS CORPUS
+        # px.bar(melted_entities_bar,
+        #      y='count', x='entity type', color='entity type'),
+
+
+        # DISTRIBUTION OF ENTITY TYPE COUNTS PER MESSAGE
+        #px.box(melted_entities, y='count', x='entity type')
     ]
-    
+
     # encode plotly graphs in JSON
     ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
     graphJSON = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
-    
+
     # render web page with plotly graphs
     return render_template('master.html', ids=ids, graphJSON=graphJSON)
 
@@ -163,13 +263,13 @@ def index():
 @app.route('/go')
 def go():
     # save user input in query
-    query = request.args.get('query', '') 
+    query = request.args.get('query', '')
 
     # use model to predict classification for query
     classification_labels = model.predict(prepare_message_text(query))[0]
-    classification_results = dict(zip(df.columns[4:], classification_labels))
+    classification_results = dict(zip(labels.columns, classification_labels))
 
-    # This will render the go.html Please see that file. 
+    # This will render the go.html Please see that file.
     return render_template(
         'go.html',
         query=query,
