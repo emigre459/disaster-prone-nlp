@@ -194,71 +194,100 @@ def index():
     melted_entities = features.melt(id_vars=['message'],
                                     value_vars=entities_of_interest,
                                     var_name='entity type',
-                                    value_name='count')
+                                    value_name='count')\
+        .sort_values('entity type')
 
     # Remove "entity_" from start of each entity type value
-    melted_entities['entity type'] = melted_entities['entity type'].str.slice(
-        7,)
+    melted_entities['entity type'] = \
+        melted_entities['entity type'].str.slice(7,)
 
     # Make a pre-computed aggregation df so plotly doesn't have to do it
     melted_entities_bar = melted_entities.groupby('entity type',
-                                                  as_index=False)['count'].sum().sort_values('count',
-                                                                                             ascending=False)
-    
+                                                  as_index=False)['count'].sum()
+
     # Rename so plotly express defaults make good axis titles
     melted_entities_bar.rename(columns={'entity type': 'Named Entity Type',
-                           'count': 'Number of Entities in Corpus'},
-                          inplace=True)
+                                        'count': 'Number of Entities in Corpus'},
+                               inplace=True)
+
+    fig_genres = {
+        'data': [
+            graph_objects.Bar(
+                x=genre_names,
+                y=genre_counts
+            ),
+
+        ],
+
+        'layout': {
+            'title': 'Distribution of Message Genres',
+            'yaxis': {
+                'title': "Count"
+            },
+            'xaxis': {
+                'title': "Genre"
+            }
+        }
+    }
+
+    # DISTRIBUTION OF TRANSLATED MESSAGES
+    fig_translated = px.histogram(features, x='translated', color='translated',
+                                  labels={
+                                      'translated': 'Message Translated Into English?'},
+                                  title='Distribution of Messages Translated From Another Language (1) or Natively English (0)')
+    fig_translated.update_layout(yaxis=graph_objects.layout.YAxis(
+        title=graph_objects.layout.yaxis.Title(
+            text="Number of Messages")))
+    
+
+    # FRACTION OF MESSAGES PER CATEGORY
+    fig_messages_per_label = px.bar(category_message_counts,
+                                    y='Messages in This Category',
+                                    x='Category',
+                                    color='Messages in This Category',
+                                    color_continuous_scale='Emrld',
+                                    barmode='relative',
+                                    title='Number of Messages In Each Category')
+
+    fig_messages_per_label.update_layout(xaxis=graph_objects.layout.XAxis(
+        tickangle=-45))
+    
+
+    # NUMBER OF DIFFERENT ENTITY TYPES ACROSS CORPUS
+    fig_entities_corpus = px.bar(melted_entities_bar,
+                                 y='Number of Entities in Corpus',
+                                 x='Named Entity Type',
+                                 color='Named Entity Type',
+                                 title='Distribution of Named Entity Types Across Corpus')
+
+    fig_entities_corpus.update_layout(showlegend=False)
+    
+    # Copy the color scheme to use it in next figure
+    colors = [plot.marker.color for plot in fig_entities_corpus.data]
+    
+    
+
+    # DISTRIBUTION OF ENTITY TYPE COUNTS PER MESSAGE
+    # To match color scheme of preceding figure, cycle through each column so you can assign each color
+    fig_entities_messages = {'data': [
+        graph_objects.Box(
+            #x=melted_entities_bar.reset_index().loc[i,'Named Entity Type'],
+            y=features["entity_" + melted_entities_bar.reset_index().loc[i,'Named Entity Type']],
+            marker_color=colors[i]) for i in range(len(colors))],
+        'layout': {
+        'title': 'Distribution of Named Entity Types Per Message',
+        'yaxis': {
+            'title': "Counts of Entity Type Per Message"
+        },
+        'xaxis': {
+            'title': "Named Entity Type"
+        }
+    }
+    }
 
     # create visuals
-    graphs = [
-        {
-            'data': [
-                graph_objects.Bar(
-                    x=genre_names,
-                    y=genre_counts
-                ),
-
-            ],
-
-            'layout': {
-                'title': 'Distribution of Message Genres',
-                'yaxis': {
-                    'title': "Count"
-                },
-                'xaxis': {
-                    'title': "Genre"
-                }
-            }
-        },
-
-        # DISTRIBUTION OF TRANSLATED MESSAGES
-        px.histogram(features, x='translated', color='translated',
-                     labels={'translated': 'Message Translated Into English?'},
-                     title='Distribution of Messages Translated From Another Language (1) or Natively English (0)')\
-        .update_layout(yaxis=graph_objects.layout.YAxis(
-            title=graph_objects.layout.yaxis.Title(
-                text="Number of Messages"))),
-
-        # FRACTION OF MESSAGES PER CATEGORY
-        px.bar(category_message_counts, y='Messages in This Category', x='Category',  # facet_col='category',
-               color='Messages in This Category',
-               color_continuous_scale='Emrld',
-               barmode='relative',
-               title='Number of Messages In Each Category')\
-        .update_layout(xaxis=graph_objects.layout.XAxis(
-            tickangle=-45)),
-
-        # NUMBER OF DIFFERENT ENTITY TYPES ACROSS CORPUS
-        px.bar(melted_entities_bar,
-              y='Number of Entities in Corpus', 
-             x='Named Entity Type', 
-             color='Named Entity Type').update_layout(showlegend=False),
-
-
-        # DISTRIBUTION OF ENTITY TYPE COUNTS PER MESSAGE
-        #px.box(melted_entities, y='count', x='entity type')
-    ]
+    graphs = [fig_genres, fig_translated, fig_messages_per_label,
+              fig_entities_corpus, fig_entities_messages]
 
     # encode plotly graphs in JSON
     ids = ["graph-{}".format(i) for i, _ in enumerate(graphs)]
