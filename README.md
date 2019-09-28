@@ -12,21 +12,28 @@ This project uses natural language processing to categorize tweets received duri
 
 ## Usage <a name="usage"></a>
 
-The web app resulting from this project can be found [here](#). It is designed to allow a user to input a text message and receive a category (or multiple categories) that the text is best described by (e.g. "Medical Help", "Food", or "Shelter").
+This web app is designed to allow a user to input a text message and receive a category (or multiple categories) that the text is best described by (e.g. "Medical Help", "Food", or "Shelter").
 
-If you would like to run the code locally instead of using the web app:
+To run the app locally:
 
-1. Run the following commands in the project's root directory to set up your database and model.
+1. conda env create -f environment_no-mac-dependencies.yml
+2. python -m spacy download en_core_web_sm
+3. pip install .
+3. cd app
+3. Run the following commands in the project's root directory to set up your database and model. (**NOTE: this isn't necessary if using the saved database and model files**)
 
     - To run the ETL pipeline that cleans data and stores in sqlite3 database:
         `python data/process_data.py data/disaster_messages.csv data/disaster_categories.csv data/DisasterResponse.db`
     - To run the ML pipeline that trains a classifier and saves the resulting model:
         `python models/train_classifier.py data/DisasterResponse.db models/classifier.pkl`
 
-2. Run the following command in the app's directory to run the web app using the model created:
+4. If working in a remote linux environment (such as the Udacity workspace): `env | grep WORK`. Record the values of WORKSPACEDOMAIN and WORKSPACEID
+4. Run the following command in the app's directory to run the web app using the model created:
     `python run.py`
 
-3. Go to http://0.0.0.0:3001/ in your browser
+5. View the app in your browser
+    1. If working locally: go to http://0.0.0.0:3001/ in your browser
+    2. If working in a remote Linux environment: `http://WORKSPACESPACEID-3001.WORKSPACEDOMAIN`
 
 
 ## Project Motivation <a name="motivation"></a>
