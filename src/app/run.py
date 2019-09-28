@@ -271,9 +271,10 @@ def index():
     # To match color scheme of preceding figure, cycle through each column so you can assign each color
     fig_entities_messages = {'data': [
         graph_objects.Box(
-            #x=melted_entities_bar.reset_index().loc[i,'Named Entity Type'],
+           # x=melted_entities_bar.reset_index()['Named Entity Type'],
             y=features["entity_" + melted_entities_bar.reset_index().loc[i,'Named Entity Type']],
-            marker_color=colors[i]) for i in range(len(colors))],
+            marker_color=colors[i], name=melted_entities_bar.reset_index().loc[i,'Named Entity Type'])
+         for i in range(len(colors))],
         'layout': {
         'title': 'Distribution of Named Entity Types Per Message',
         'yaxis': {
@@ -281,9 +282,9 @@ def index():
         },
         'xaxis': {
             'title': "Named Entity Type"
-        }
-    }
-    }
+        },
+            'showlegend': False
+    }}
 
     # create visuals
     graphs = [fig_genres, fig_translated, fig_messages_per_label,
