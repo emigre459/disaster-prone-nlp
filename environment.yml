@@ -18,6 +18,7 @@ dependencies:
   - cymem=2.0.2
   - cython-blis=0.2.4
   - flask=1.1.1
+  - gunicorn=19.9.0
   - idna=2.8
   - importlib_metadata=0.23
   - intel-openmp=2019.4
