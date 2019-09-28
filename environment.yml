@@ -35,7 +35,7 @@ dependencies:
   - markupsafe=1.1.1
   - mkl=2019.4
   - mkl-service=2.3.0
-  - mkl_fft=1.0.14
+  - mkl_fft=1.0.6
   - mkl_random=1.1.0
   - more-itertools=7.2.0
   - murmurhash=1.0.2
