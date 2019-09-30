@@ -21,6 +21,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 
 from joblib import dump, load
@@ -188,11 +189,33 @@ def build_model():
                                                            'message')],
                                             remainder='passthrough',
                                             verbose=True)),
-        ('classifier', RandomForestClassifier(n_estimators=10))
+        ('classifier', RandomForestClassifier())
     ],
         verbose=True)
+    
+    # Setup grid search to optimize hyperparameters based on notebook explorations earlier
+    grid_parameters = {
+    'classifier__n_estimators': [10, 50, 100],
+    'classifier__min_samples_leaf': [1, 5, 10]
+    }
 
-    return pipeline
+    cv = GridSearchCV(pipeline, grid_parameters, cv = 5, 
+                      scoring='f1_weighted', error_score=0.0,
+                      iid=False, verbose=1, njobs=3,
+                      return_train_score=True)
+
+    cv.fit(features_train, labels_train)
+
+    tuning_results = pd.DataFrame(cv.cv_results_).sort_values('rank_test_score')
+    
+    print("Hyperparameter Tuning Results:\n")
+    print(tuning_results)
+    print("\n\n")
+    
+    # Fit cross-validation-optimized model on full training set before calling it a day
+    final_model = cv.best_estimator_.fit(features_train, labels_train)
+
+    return final_model
 
 
 def evaluate_model(model, features_test, labels_test, category_names):
