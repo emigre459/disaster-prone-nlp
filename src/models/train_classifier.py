@@ -168,18 +168,26 @@ def tokenize(text, lemma=True, use_spacy_full=False, use_spacy_lemma_only=True):
     return words
 
 
-def build_model():
+def build_model(features_train, labels_train):
     '''
     Builds the modeling pipeline that can then be trained and tested.
 
 
     Parameters
     ----------
-
+    features_train: pandas DataFrame or numpy array containing training features data. Used
+        to perform hyperparameter tuning on the pipeline
+        
+    labels_train: pandas DataFrame or numpy array containing training labels data. Used
+        to perform hyperparameter tuning on the pipeline
+        
 
     Returns
     -------
-    scikit-learn Pipeline that includes a tf-idf step and a RandomForestClassifier
+    scikit-learn Pipeline that includes a tf-idf step and a RandomForestClassifier,
+    trained to have the optimal hyperparameters. NOTE: this model should be fit
+    on the full training data before being used for predictions, so that it is as
+    accurate as possible.
     '''
 
     pipeline = Pipeline([
@@ -201,7 +209,7 @@ def build_model():
 
     cv = GridSearchCV(pipeline, grid_parameters, cv = 5, 
                       scoring='f1_weighted', error_score=0.0,
-                      iid=False, verbose=1, njobs=3,
+                      iid=False, verbose=1, n_jobs=3,
                       return_train_score=True)
 
     cv.fit(features_train, labels_train)
@@ -211,11 +219,8 @@ def build_model():
     print("Hyperparameter Tuning Results:\n")
     print(tuning_results)
     print("\n\n")
-    
-    # Fit cross-validation-optimized model on full training set before calling it a day
-    final_model = cv.best_estimator_.fit(features_train, labels_train)
 
-    return final_model
+    return cv.best_estimator_
 
 
 def evaluate_model(model, features_test, labels_test, category_names):
@@ -249,7 +254,9 @@ def evaluate_model(model, features_test, labels_test, category_names):
                                               digits=2, output_dict=True)
     
     class_report = pd.DataFrame.from_dict(class_report_dict)
+    print("Fully-trained model evaluation results: \n")
     print(class_report)
+    print("\n\n")
 
     return class_report
 
@@ -298,12 +305,14 @@ def main():
             X, Y, test_size=0.2)
 
         print('Building model...')
-        model = build_model()
+        model = build_model(X_train, Y_train)
 
+        # Fitting one more time on the full training dataset for max accuracy
+        # post-tuning
         print('Training model...')
         time0 = time()
         model.fit(X_train, Y_train)
-        print(f"Model trained in {(time()-time0) * 60} minutes")
+        print(f"Final model trained in {(time()-time0) * 60} minutes")
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
