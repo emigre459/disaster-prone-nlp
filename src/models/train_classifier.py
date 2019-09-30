@@ -25,6 +25,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 
 from joblib import dump, load
+import multiprocessing
 
 
 def parse_args(args):
@@ -209,7 +210,7 @@ def build_model(features_train, labels_train):
 
     cv = GridSearchCV(pipeline, grid_parameters, cv = 5, 
                       scoring='f1_weighted', error_score=0.0,
-                      iid=False, verbose=1, n_jobs=3,
+                      iid=False, verbose=1, n_jobs=-1,
                       return_train_score=True)
 
     cv.fit(features_train, labels_train)
@@ -330,4 +331,7 @@ def main():
 
 
 if __name__ == '__main__':
+    # Necessary to try and manage issues with joblib multithreading
+    multiprocessing.set_start_method('forkserver')
+    
     main()
