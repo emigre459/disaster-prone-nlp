@@ -25,7 +25,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 
 from joblib import dump, load
-import multiprocessing
 
 
 def parse_args(args):
@@ -331,7 +330,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # Necessary to try and manage issues with joblib multithreading
-    multiprocessing.set_start_method('forkserver')
-    
     main()
