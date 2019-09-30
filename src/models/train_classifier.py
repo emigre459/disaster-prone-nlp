@@ -312,7 +312,7 @@ def main():
         print('Training model...')
         time0 = time()
         model.fit(X_train, Y_train)
-        print(f"Final model trained in {(time()-time0) * 60} minutes")
+        print(f"Final model trained in {(time()-time0) / 60} minutes")
 
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)
