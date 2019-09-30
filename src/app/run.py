@@ -115,7 +115,7 @@ def prepare_message_text(text):
 
 # load data
 # TODO: change to 'sqlite:///../data/DisasterTweets.db' in Udacity workspace
-engine = create_engine('sqlite:///../../data/DisasterTweets.db')
+engine = create_engine('sqlite:///data/DisasterTweets.db')
 df = pd.read_sql_table('categorized_messages', engine)
 
 # Drop columns 'original', and 'id' as we don't need them at this stage
@@ -145,7 +145,7 @@ category_names = labels.columns
 
 # load model
 # TODO: change to "../models/09-25-2019_RandomForest_added_features.pkl" when in Udacity workspace
-model = joblib.load("../../models/09-25-2019_RandomForest_added_features.pkl")
+model = joblib.load("models/09-25-2019_RandomForest_added_features.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -171,7 +171,6 @@ def index():
                             'entity_TIME',
                             'entity_MONEY']
 
-    # TODO: need to figure out how I can access labels and features from training data...
     labels.loc[:, 'message index'] = labels.index
 
     labels_melted = labels.melt(id_vars=['message index'],
