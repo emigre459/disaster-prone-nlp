@@ -209,7 +209,7 @@ def build_model(features_train, labels_train):
 
     cv = GridSearchCV(pipeline, grid_parameters, cv = 5, 
                       scoring='f1_weighted', error_score=0.0,
-                      iid=False, verbose=1, n_jobs=-1,
+                      iid=False, verbose=1, n_jobs=1,
                       return_train_score=True)
 
     cv.fit(features_train, labels_train)
